@@ -75,7 +75,7 @@
 }
 .codepanel {
   margin: 10px;
-  width: 65%;
+  width: 60%;
   height: 83vh;
   background-color: #1e1e1e;
   color: #fff;
@@ -200,8 +200,8 @@
 }
 
 .line-numbers {
-  background: #252526;
-  color: #858585;
+  background:#282A3A;
+  color:white;
   padding: 10px;
   text-align: right;
   user-select: none;
@@ -249,7 +249,7 @@
 }
 .inout {
   margin: 10px;
-  width: 35%;
+  width: 40%;
   height: 83vh;
   display: flex;
   flex-direction: column;
