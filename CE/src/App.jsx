@@ -1,16 +1,15 @@
 
 import React from 'react'
 import "./App.css"
+import {Box} from "@chakra-ui/react"
 import CodeEditer from './ce/CodeEditer'
-import Se from './Se/Se'
 
 function App() {
   return (
-    <div>
-      {/* <Se/> */}
-      <CodeEditer/>
-    </div>
-  )
+    <Box>
+      <CodeEditer />
+    </Box>
+  );
 }
 
 export default App

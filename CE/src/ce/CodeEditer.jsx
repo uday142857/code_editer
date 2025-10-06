@@ -1,19 +1,29 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 // import Select from "react-select";
+import { Editor } from "@monaco-editor/react";
+import { useToast } from "@chakra-ui/react";
+import { CODE_SNIPPETS, LANGUAGE_VERSIONS } from "../constant";
+import { executeCode } from "../api";
 import "./CodeEditer.css";
 function CodeEditer() {
-  const [code, setCode] = useState("");
+  const toast = useToast();
+  const editorRef = useRef();
+  const inputRef = useRef();
   const [showOutput, setShowOutput] = useState(false);
   const [imActive, setImActive] = useState(null);
+  const [language, setLanguage] = useState("javascript");
+  const [code, setCode] = useState("");
+  const [output, setOutput] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [userInput, setUserInput] = useState("");
 
-  const handleChange = (e) => {
-    setCode(e.target.value);
-  };
 
+  const languages = Object.entries(LANGUAGE_VERSIONS);
   const image = [
     {
       i_m: "https://quantumzeitgeist.com/wp-content/uploads/pythoned.png",
-      name: "Pthon",
+      name: "Python",
     },
     {
       i_m: "https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/java-programming-language-icon.png",
@@ -21,7 +31,7 @@ function CodeEditer() {
     },
     {
       i_m: "https://skillforge.com/wp-content/uploads/2020/10/javascript-768x866.png",
-      name: "Java Script",
+      name: "JavaScript",
     },
     {
       i_m: "https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/c-program-icon.png",
@@ -29,24 +39,70 @@ function CodeEditer() {
     },
     {
       i_m: "https://marketplacedesignoye.s3.ap-south-1.amazonaws.com/csharp--programming-language-icon-symbol-logo-vector-.png",
-      name: "C#",
+      name: "Csharp",
     },
     {
       i_m: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/ISO_C%2B%2B_Logo.svg/459px-ISO_C%2B%2B_Logo.svg.png?20170928190710",
-      name: "C++",
+      name: "Cpp",
     },
     {
       i_m: "https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/go-programming-language-icon.png",
-      name: "GOlang",
+      name: "Go",
     },
     {
       i_m: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/R_logo.svg/1086px-R_logo.svg.png?20240131042527",
       name: "R",
     },
-    
   ];
 
-  const lineCount = code.split("\n").length;
+  const runCode = async () => {
+    const sourceCode = editorRef.current.getValue();
+    if (!sourceCode) return;
+
+  
+
+    const inputKeywords = ["input(", "scanf", "cin >>", "prompt("];
+
+    if (
+      inputKeywords.some((keyword) => sourceCode.includes(keyword)) &&
+      !userInput
+    ) {
+      toast({
+        title: "Input required",
+        description: "Please enter your input in the left box and press Enter.",
+        status: "info",
+        duration: 4000,
+      });
+      setShowOutput(true); 
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 200);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const { run: result } = await executeCode(
+        language,
+        sourceCode,
+        userInput
+      );
+      setOutput(result.output.split("\n"));
+      result.stderr ? setIsError(true) : setIsError(false);
+    } catch (error) {
+      console.log(error);
+      toast({
+        title: "An error occurred.",
+        description: error.message || "Unable to run code",
+        status: "error",
+        duration: 6000,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // const lineCount = code.split("\n").length;
   return (
     <div>
       <header className="h1">
@@ -82,6 +138,13 @@ function CodeEditer() {
                         src={im.i_m}
                         onClick={() => {
                           setImActive(index);
+                          const langKey = image[index].name
+                            .toLowerCase()
+                            .replace(/\s+/g, "");
+                          setLanguage(langKey);
+                          console.log(langKey);
+                          setCode(CODE_SNIPPETS[langKey] || "");
+                          console.log(CODE_SNIPPETS[langKey] || "");
                         }}
                         alt="img"
                       />
@@ -112,24 +175,29 @@ function CodeEditer() {
                 <span className="tip">Download</span>
                 <i class="bi bi-download"></i>
               </div>
-              <div className="tol">
+              <div className="tol" isLoading={isLoading} onClick={runCode}>
                 <span className="tip">Run</span>
                 <i class="bi bi-play-fill"></i>
               </div>
             </div>
           </div>
           <div className="editor-container">
-            <div className="line-numbers">
-              {Array.from({ length: lineCount }, (_, i) => (
-                <div key={i}>{i + 1}</div>
-              ))}
-            </div>
+           
 
-            <textarea
-              className="code-input"
+            <Editor
+              height="72vh"
+              theme="vs-dark"
+              defaultLanguage={language}
               value={code}
-              onChange={handleChange}
-              placeholder="Write your code here..."
+              language={language}
+              defaultValue="//Write code here"
+              onMount={(e) => {
+                editorRef.current = e;
+                e.focus();
+              }}
+              onChange={(e) => {
+                setCode(e);
+              }}
             />
           </div>
         </div>
@@ -144,8 +212,18 @@ function CodeEditer() {
               )}
             </div>
             <textarea
+              ref={inputRef}
               className="intext iot"
               placeholder="Enter your input..."
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  runCode();
+                  setUserInput("")
+                }
+              }}
             />
           </div>
           {showOutput && (
@@ -156,7 +234,20 @@ function CodeEditer() {
                   <i class="bi bi-x-circle"></i>
                 </button>
               </div>
-              <textarea className="outtext iot" placeholder="Your output..." />
+              
+              <div
+                className="outtext iot"
+                style={{
+                  color: isError ? "#b50303" : "",
+                  border: "1px solid",
+                  borderRadius: "4px",
+                  borderColor: isError ? "red" : "#333",
+                }}
+              >
+                {output
+                  ? output.map((line, i) => <p key={i}>{line}</p>)
+                  : 'Click "Run Code" to see the output here'}
+              </div>
             </div>
           )}
         </div>
